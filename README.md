@@ -50,8 +50,11 @@ $ yarn typeorm migration:revert
 ## Deploy on Heroku
 
 ```bash
-# Log in to Container Registry
+# Log in to Heroku
 $ heroku login
+
+#Log in to Container Registry
+$ heroku container:login
 
 # Push your Docker-based app
 $ heroku container:push web -a app-name
