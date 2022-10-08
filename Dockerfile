@@ -1,19 +1,21 @@
-FROM node:16 as builder
-
-ENV NODE_ENV build
-WORKDIR /home/node
-COPY . /home/node
-COPY .env /home/node/
-RUN npm install --force
-RUN npm run build 
-
-# ---
-
+# Base image
 FROM node:16
-ENV NODE_ENV production
-USER node
-WORKDIR /home/node
-COPY --from=builder /home/node/package*.json /home/node/
-COPY --from=builder /home/node/node_modules/ /home/node/node_modules/
-COPY --from=builder /home/node/dist/ /home/node/dist/
-CMD ["node", "dist/main.js"]
+
+# Create app directory
+WORKDIR /usr/src/app
+
+# A wildcard is used to ensure both package.json AND package-lock.json are copied
+COPY package*.json ./
+
+# Install app dependencies
+RUN npm install
+
+# Bundle app source
+COPY . .
+
+# Creates a "dist" folder with the production build
+RUN npm run build
+EXPOSE 3000
+
+# Start the server using the production build
+CMD [ "node", "dist/main.js" ]
