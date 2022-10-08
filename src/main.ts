@@ -14,7 +14,7 @@ async function bootstrap() {
 
   const options = new DocumentBuilder()
     .addBearerAuth()
-    .setTitle("API Documentation")
+    .setTitle(" Plateforme des institutions financière API")
     .setVersion("1.0")
     .build();
   const document = SwaggerModule.createDocument(app, options);
