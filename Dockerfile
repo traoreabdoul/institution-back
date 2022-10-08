@@ -3,6 +3,7 @@ FROM node:16 as builder
 ENV NODE_ENV build
 WORKDIR /home/node
 COPY . /home/node
+COPY .env /home/node/
 RUN npm install --force
 RUN npm run build 
 

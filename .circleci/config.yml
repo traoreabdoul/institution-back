@@ -1,0 +1,133 @@
+version: 2.1
+orbs:
+  gcp-gcr: circleci/gcp-gcr@0.13.0
+  cloudrun: circleci/gcp-cloud-run@1.0.2
+jobs:
+  initialization:
+    docker:
+      - image: circleci/node
+    steps:
+      - checkout
+      - setup_remote_docker:
+          version: 19.03.13
+      - run:
+          name: Creation of .env file
+          command: |
+            echo POSTGRES_DB=${POSTGRES_DB} >> .env
+            echo POSTGRES_HOST=${POSTGRES_HOST} >> .env
+            echo POSTGRES_PORT=${POSTGRES_PORT} >> .env
+            echo POSTGRES_USER=${POSTGRES_USER} >> .env
+            echo POSTGRES_PASSWORD=${POSTGRES_PASSWORD} >> .env
+            echo BASE_URL=${BASE_URL} >> .env
+            echo FROM_EMAIL=${FROM_EMAIL} >> .env
+            echo JWT_SECRET_ACCESS=${JWT_SECRET_ACCESS} >> .env
+            echo JWT_SECRET_CONFIRM=${JWT_SECRET_CONFIRM} >> .env
+            echo JWT_SECRET_REFRESH=${JWT_SECRET_REFRESH} >> .env
+            echo SENDGRID_API_KEY=${SENDGRID_API_KEY} >> .env
+      - persist_to_workspace:
+          # taken to be the root directory of the workspace.
+          root: /home/circleci/project
+          # Must be relative path from root
+          paths:
+            - .env
+  build_app:
+    docker:
+      - image: circleci/node
+    steps:
+      - checkout
+      - setup_remote_docker:
+          version: 19.03.13
+      - attach_workspace:
+          # Must be absolute path or relative path from working_directory
+          at: /home/circleci/project
+      - restore_cache:
+          keys:
+            - yarn-v1-{{ checksum "yarn.lock" }}
+            - yarn-v1-
+      - run:
+          name: Install dependencies
+          command: |
+            yarn install --frozen-lockfile
+      - save_cache:
+          key: yarn-v1-{{ checksum "yarn.lock" }}
+          paths:
+            - node_modules
+      - run: yarn build
+      - run:
+          name: remove development dependencies
+          command: |
+            # remove development dependencies
+            npm prune --production
+      - run:
+          name: remove unused dependencies
+          command: |
+            # remove unused dependencies
+            rm -rf node_modules/rxjs/src/
+            rm -rf node_modules/rxjs/bundles/
+            rm -rf node_modules/rxjs/_esm5/
+            rm -rf node_modules/rxjs/_esm2015/
+            rm -rf node_modules/swagger-ui-dist/*.map
+            cp .env ./dist/.env
+      - persist_to_workspace:
+          root: /home/circleci/project
+          paths:
+            - dist
+            - node_modules
+            - .env
+  # Make sure we are up to date with the package.json dependencies
+  deploy_app:
+    docker:
+      - image: circleci/python:3.8
+    steps:
+      - checkout
+      - setup_remote_docker:
+          version: 19.03.13
+      - attach_workspace:
+          # Must be absolute path or relative path from working_directory
+          at: /home/circleci/project
+      - run:
+          name: Build app binary and Docker image
+          command: |
+            export NODE_ENV=dev
+            echo 'export PATH=~$PATH:~/.local/bin' >> $BASH_ENV
+            echo ${GCP_PROJECT_KEY} | base64 -d -i > $HOME/gcloud-service-key.json
+            echo 'export GOOGLE_CLOUD_KEYS=$(cat $HOME/gcloud-service-key.json)' >> $BASH_ENV
+            echo 'export TAG=${CIRCLE_SHA1}' >> $BASH_ENV
+            echo 'export IMAGE_NAME=$CIRCLE_PROJECT_REPONAME' >> $BASH_ENV && source $BASH_ENV
+            mkdir -p app
+            cp .env ./app/.env
+            cp -r dist ./app/dist/
+            cp -r node_modules ./app/node_modules
+            docker build --build-arg ENV_VAR=$NODE_ENV -t $REGISTRY_URL/$GOOGLE_PROJECT_ID/$REPO_NAME/$IMAGE_NAME .
+      - gcp-gcr/gcr-auth:
+          gcloud-service-key: GOOGLE_CLOUD_KEYS
+          google-project-id: GOOGLE_PROJECT_ID
+          google-compute-zone: GOOGLE_COMPUTE_ZONE
+      - run:
+          name: push to artefact repository
+          command: |
+            gcloud auth configure-docker $REGISTRY_URL
+            docker push $REGISTRY_URL/$GOOGLE_PROJECT_ID/$REPO_NAME/$IMAGE_NAME
+      - cloudrun/deploy:
+          image: $REGISTRY_URL/$GOOGLE_PROJECT_ID/$REPO_NAME/$IMAGE_NAME
+          platform: managed
+          region: $GOOGLE_COMPUTE_ZONE
+          service-name: $SERVICE_NAME
+          unauthenticated: true
+          
+# Invoke jobs via workflows
+workflows:
+  deploy_app_to_gcp:
+    jobs:
+      - initialization
+      - build_app:
+          requires:
+            - initialization
+      - deploy_app:
+          filters:
+            branches:
+              only:
+                - event
+          requires:
+            - initialization
+            - build_app
