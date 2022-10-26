@@ -19,7 +19,7 @@ export const dataSourceOptions: DataSourceOptions = {
   password: process.env.POSTGRES_PASSWORD,
   database: process.env.POSTGRES_DB || DEFAULT_POSTGRES_DB,
   logging: true,
-  synchronize: true,
+  synchronize: false,
   entities: [join(__dirname, "**/*.entity.{ts,js}")],
   migrations: [join(__dirname, "database/migrations/**/*.{ts,js}")],
   namingStrategy: new SnakeNamingStrategy(),
