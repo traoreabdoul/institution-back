@@ -1,6 +1,7 @@
-import {Column, Entity, ManyToOne} from "typeorm";
+import {Column, Entity, ManyToOne, OneToMany} from "typeorm";
 import {BaseEntity} from "../../../common/baseEntity/base.entity";
 import {UserStatus} from "../../../common/constants/constants";
+import {ClientEntity} from "../../client/entities/client.entity";
 import {RoleEntity} from "../../role/entities/role.entity";
 
 @Entity("users")
@@ -25,4 +26,7 @@ export class UsersEntity extends BaseEntity {
 
   @ManyToOne(() => RoleEntity, (role) => role.users)
   role: RoleEntity;
+
+  @OneToMany(() => ClientEntity, (client) => client.user)
+  clients: ClientEntity[];
 }

@@ -14,6 +14,12 @@ export enum UserStatus {
   DISABLE = "disable",
   BLOCK = "block",
 }
+export enum EvaluationStatus {
+  ATTENTE = "en attente",
+  VALIDE = "valide",
+  REJETE = "rejete",
+}
+
 export enum UserRole {
   USER = "user",
   ADMIN = "admin",

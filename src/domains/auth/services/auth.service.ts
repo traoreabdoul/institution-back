@@ -13,6 +13,7 @@ import {
   UserStatus,
 } from "../../../common/constants/constants";
 import {RoleService} from "../../role/services/role.service";
+import {UsersEntity} from "../../users/entities/users.entity";
 
 @Injectable()
 export class AuthService {
@@ -25,17 +26,25 @@ export class AuthService {
   //register user
   async register(user: CreateUserDto) {
     const newUser = await this.userService.createUser(user);
-
     return new CreateUserResponseDto(
       newUser.firstName,
       newUser.lastName,
       newUser.id,
       newUser.createdAt,
       newUser.userStatus,
+      newUser.role.name,
     );
   }
+
+  // add role to user
+  async addRoleToUser(roleName: string, user: UsersEntity) {
+    const role = this.roleService.getRoleByName(roleName);
+    user.role = await role;
+    return user;
+  }
+
   // login users
-  async login(dto: LoginDto): Promise<Tokens> {
+  async login(dto: LoginDto): Promise<any> {
     const user = await this.userService.getUserByEmail(dto.email);
     if (user.userStatus != UserStatus.ENABLE) {
       throw new HttpException("Account is not activate", HttpStatus.UNAUTHORIZED);
@@ -47,7 +56,16 @@ export class AuthService {
     const role = await this.roleService.getRoleById(user.role.id);
     const tokens = await this.generateAccessAndResfreshTokens(user.email, user.password, role.name);
     await this.updateToken(user.id, tokens.refresh_token);
-    return tokens;
+    const userInfo = new CreateUserResponseDto(
+      user.firstName,
+      user.lastName,
+      user.id,
+      user.createdAt,
+      user.userStatus,
+      user.role.name,
+    );
+
+    return {tokens, userInfo};
   }
   // update token
   async updateToken(id: number, token: string) {

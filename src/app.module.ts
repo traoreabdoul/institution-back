@@ -5,6 +5,7 @@ import {typeormOptions} from "./datasource";
 import {UsersModule} from "./domains/users/users.module";
 import {AuthModule} from "./domains/auth/auth.module";
 import {RoleModule} from "./domains/role/role.module";
+import { ClientModule } from './domains/client/client.module';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import {RoleModule} from "./domains/role/role.module";
     UsersModule,
     AuthModule,
     RoleModule,
+    ClientModule,
   ],
 })
 export class AppModule {}

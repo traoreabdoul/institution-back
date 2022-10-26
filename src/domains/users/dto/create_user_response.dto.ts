@@ -25,11 +25,16 @@ export class CreateUserResponseDto {
   @IsString()
   status: string;
 
-  constructor(firstName, lastName, id, create_at, status) {
+  @ApiProperty()
+  @IsString()
+  role: string;
+
+  constructor(firstName, lastName, id, create_at, status, role) {
     this.firstName = firstName;
     this.lastName = lastName;
     this.id = id;
     this.create_at = create_at;
     this.status = status;
+    this.role = role;
   }
 }
